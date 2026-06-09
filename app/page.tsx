@@ -83,7 +83,7 @@ export default function Home() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {businesses.map((biz) => (
-            <div key={biz.id} className="border rounded-lg p-5 hover:shadow-lg transition cursor-pointer">
+            <div key={biz.id} onClick={() => window.location.href = `/business/${biz.id}`} className="border rounded-lg p-5 hover:shadow-lg transition cursor-pointer">
 {biz.is_premium === true && (
   <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded mb-2 inline-block">⭐ FEATURED</span>
 )}
