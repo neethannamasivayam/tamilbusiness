@@ -50,6 +50,7 @@ export default function BusinessDetail() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [upgradingPremium, setUpgradingPremium] = useState(false);
 
   useEffect(() => {
     fetch(`/api/businesses/${params.id}`)
@@ -65,6 +66,19 @@ export default function BusinessDetail() {
       .then(res => res.json())
       .then(data => setReviews(data));
   }, [params.id]);
+
+  const handleUpgradePremium = async () => {
+    if (!business) return;
+    setUpgradingPremium(true);
+    const res = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ business_id: business.id, business_name: business.name }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+    setUpgradingPremium(false);
+  };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +159,23 @@ export default function BusinessDetail() {
               )}
             </div>
             <p className="text-gray-500 mt-1">📍 {business.city}, {business.country}</p>
+
+            {/* Premium Upgrade Button */}
+            <div className="mt-4">
+              {business.is_premium == 1 ? (
+                <span className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg font-semibold inline-block">
+                  ⭐ Premium Listing Active
+                </span>
+              ) : (
+                <button
+                  onClick={handleUpgradePremium}
+                  disabled={upgradingPremium}
+                  className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg disabled:opacity-50"
+                >
+                  {upgradingPremium ? 'Redirecting...' : '⭐ Upgrade to Premium — $9.99/month'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -155,7 +186,6 @@ export default function BusinessDetail() {
             <p className="text-gray-600 leading-relaxed">
               {business.description || 'No description provided yet.'}
             </p>
-
             {business.address && (
               <div className="mt-6">
                 <h3 className="font-semibold text-gray-800 mb-2">📍 Address</h3>
