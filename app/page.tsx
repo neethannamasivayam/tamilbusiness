@@ -10,11 +10,18 @@ type Business = {
   is_premium: boolean;
 };
 
+type User = {
+  id: number;
+  name: string;
+  email: string;
+};
+
 export default function Home() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     fetch('/api/businesses')
@@ -23,11 +30,15 @@ export default function Home() {
         setBusinesses(data);
         setFilteredBusinesses(data);
       });
+
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setUser(data); });
   }, []);
 
   const handleSearch = () => {
     const results = businesses.filter(biz => {
-      const matchesSearch = searchQuery === '' || 
+      const matchesSearch = searchQuery === '' ||
         biz.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         biz.category.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesLocation = locationQuery === '' ||
@@ -53,6 +64,12 @@ export default function Home() {
     setFilteredBusinesses(businesses);
   };
 
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+    window.location.reload();
+  };
+
   return (
     <main className="min-h-screen bg-white">
       {/* Header */}
@@ -67,13 +84,22 @@ export default function Home() {
             <span className="text-yellow-400 font-bold">.com</span>
           </div>
         </div>
-        <nav className="flex gap-4">
+        <nav className="flex items-center gap-4">
           <a href="/register-business" className="bg-white text-red-700 px-4 py-2 rounded font-semibold hover:bg-red-50">
             Add Your Business
           </a>
-          <a href="/login" className="border border-white px-4 py-2 rounded hover:bg-red-600">
-            Login
-          </a>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-yellow-300 font-semibold">👋 {user.name}</span>
+              <button onClick={handleLogout} className="border border-white px-4 py-2 rounded hover:bg-red-600 text-sm">
+                Logout
+              </button>
+            </div>
+          ) : (
+            <a href="/login" className="border border-white px-4 py-2 rounded hover:bg-red-600">
+              Login
+            </a>
+          )}
         </nav>
       </header>
 
@@ -140,9 +166,7 @@ export default function Home() {
               : filteredBusinesses.length > 0 ? 'Listed Businesses' : 'No businesses yet'}
           </h3>
           {(searchQuery || locationQuery) && (
-            <button
-              onClick={handleClearSearch}
-              className="text-red-600 hover:underline text-sm font-medium">
+            <button onClick={handleClearSearch} className="text-red-600 hover:underline text-sm font-medium">
               ✕ Clear search
             </button>
           )}
