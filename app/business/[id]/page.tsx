@@ -105,6 +105,8 @@ export default function BusinessDetail() {
   if (!business) return null;
 
   const emoji = categoryEmoji[business.category] || '🏢';
+  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+  const mapQuery = encodeURIComponent(`${business.address}, ${business.city}, ${business.country}`);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -153,11 +155,24 @@ export default function BusinessDetail() {
             <p className="text-gray-600 leading-relaxed">
               {business.description || 'No description provided yet.'}
             </p>
+
             {business.address && (
               <div className="mt-6">
                 <h3 className="font-semibold text-gray-800 mb-2">📍 Address</h3>
                 <p className="text-gray-600">{business.address}</p>
                 <p className="text-gray-600">{business.city}, {business.country}</p>
+                {mapsKey && (
+                  <div className="mt-3 rounded-lg overflow-hidden">
+                    <iframe
+                      width="100%"
+                      height="250"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      allowFullScreen
+                      src={`https://www.google.com/maps/embed/v1/place?key=${mapsKey}&q=${mapQuery}`}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
