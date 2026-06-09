@@ -85,7 +85,7 @@ export default function Home() {
           </div>
         </div>
         <nav className="flex items-center gap-4">
-          <a href="/register-business" className="bg-white text-red-700 px-4 py-2 rounded font-semibold hover:bg-red-50">
+          <a href="/submit" className="bg-white text-red-700 px-4 py-2 rounded font-semibold hover:bg-red-50">
             Add Your Business
           </a>
           {user ? (
@@ -185,7 +185,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {filteredBusinesses.map((biz) => (
               <div key={biz.id} onClick={() => window.location.href = `/business/${biz.id}`} className="border rounded-lg p-5 hover:shadow-lg transition cursor-pointer">
-                {biz.is_premium === true && (
+                {biz.is_premium == 1 && (
                   <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded mb-2 inline-block">⭐ FEATURED</span>
                 )}
                 <div className="bg-gray-100 h-32 rounded mb-3 flex items-center justify-center text-5xl">
