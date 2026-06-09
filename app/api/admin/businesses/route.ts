@@ -7,10 +7,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'pending';
 
-    const [rows] = await db.query(
-      'SELECT * FROM businesses WHERE status = ? ORDER BY created_at DESC',
-      [status]
-    );
+    const [rows] = status === 'all'
+      ? await db.query('SELECT * FROM businesses ORDER BY created_at DESC')
+      : await db.query('SELECT * FROM businesses WHERE status = ? ORDER BY created_at DESC', [status]);
     return NextResponse.json(rows);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch businesses' }, { status: 500 });
