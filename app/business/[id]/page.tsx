@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 interface Business {
@@ -23,6 +23,13 @@ interface Review {
   reviewer_name: string;
   rating: number;
   comment: string;
+  created_at: string;
+}
+
+interface Photo {
+  id: number;
+  business_id: number;
+  url: string;
   created_at: string;
 }
 
@@ -51,6 +58,10 @@ export default function BusinessDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [upgradingPremium, setUpgradingPremium] = useState(false);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch(`/api/businesses/${params.id}`)
@@ -65,6 +76,10 @@ export default function BusinessDetail() {
     fetch(`/api/reviews?business_id=${params.id}`)
       .then(res => res.json())
       .then(data => setReviews(data));
+
+    fetch(`/api/photos?business_id=${params.id}`)
+      .then(res => res.json())
+      .then(data => setPhotos(Array.isArray(data) ? data : []));
   }, [params.id]);
 
   const handleUpgradePremium = async () => {
@@ -78,6 +93,50 @@ export default function BusinessDetail() {
     const data = await res.json();
     if (data.url) window.location.href = data.url;
     setUpgradingPremium(false);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File is too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      // Upload to Cloudinary via our API
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+
+      if (!uploadData.url) {
+        alert('Upload failed. Please try again.');
+        setUploadingPhoto(false);
+        return;
+      }
+
+      // Save photo URL to database
+      await fetch('/api/photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_id: params.id, url: uploadData.url }),
+      });
+
+      // Refresh photos
+      fetch(`/api/photos?business_id=${params.id}`)
+        .then(res => res.json())
+        .then(data => setPhotos(Array.isArray(data) ? data : []));
+    } catch (error) {
+      alert('Upload failed. Please try again.');
+    }
+    setUploadingPhoto(false);
   };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -138,9 +197,16 @@ export default function BusinessDetail() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Business Header Card */}
         <div className="bg-white rounded-2xl shadow-md overflow-hidden mb-6">
-          <div className="bg-gray-100 h-48 flex items-center justify-center text-8xl">
-            {emoji}
-          </div>
+          {/* Hero - show first photo or emoji */}
+          {photos.length > 0 ? (
+            <div className="h-48 overflow-hidden">
+              <img src={photos[0].url} alt={business.name} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="bg-gray-100 h-48 flex items-center justify-center text-8xl">
+              {emoji}
+            </div>
+          )}
           <div className="p-6">
             <h1 className="text-3xl font-bold text-gray-900">{business.name}</h1>
             <div className="flex items-center gap-3 mt-2 flex-wrap">
@@ -178,6 +244,70 @@ export default function BusinessDetail() {
             </div>
           </div>
         </div>
+
+        {/* Photo Gallery */}
+        <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-800">
+              Photos {photos.length > 0 && <span className="text-gray-400 font-normal text-base">({photos.length})</span>}
+            </h2>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-semibold disabled:opacity-50"
+            >
+              {uploadingPhoto ? '⏳ Uploading...' : '📷 Add Photo'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
+          </div>
+
+          {photos.length === 0 ? (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition"
+            >
+              <div className="text-4xl mb-2">📷</div>
+              <p className="text-gray-500 font-medium">No photos yet</p>
+              <p className="text-gray-400 text-sm mt-1">Click to upload the first photo</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {photos.map((photo) => (
+                <div
+                  key={photo.id}
+                  className="aspect-square overflow-hidden rounded-xl cursor-pointer hover:opacity-90 transition"
+                  onClick={() => setSelectedPhoto(photo.url)}
+                >
+                  <img src={photo.url} alt="Business photo" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Lightbox */}
+        {selectedPhoto && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedPhoto(null)}
+          >
+            <div className="relative max-w-3xl w-full">
+              <button
+                className="absolute -top-10 right-0 text-white text-2xl font-bold"
+                onClick={() => setSelectedPhoto(null)}
+              >
+                ✕
+              </button>
+              <img src={selectedPhoto} alt="Full view" className="w-full rounded-xl max-h-[80vh] object-contain" />
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           {/* About */}
